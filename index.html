@@ -1,0 +1,892 @@
+<!DOCTYPE html>
+
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Expenses">
+<meta name="theme-color" content="#0d0d0f">
+<title>My Expense Tracker</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700;800&family=DM+Mono:wght@300;400;500&display=swap');
+:root {
+  --bg:#0d0d0f; --surface:#16161a; --card:#1c1c22; --border:#2a2a35;
+  --accent:#f0c040; --accent2:#e05a5a; --accent3:#5aaee0; --accent4:#5ae0a0;
+  --text:#f0efe8; --muted:#7a7a8a; --radius:16px;
+  --safe-top:env(safe-area-inset-top,0px);
+  --safe-bottom:env(safe-area-inset-bottom,0px);
+  --nav-h:64px;
+}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
+html,body{background:var(--bg);color:var(--text);font-family:'Syne',sans-serif;min-height:100vh;max-width:480px;margin:0 auto;overscroll-behavior:none;}
+
+/* ── BOTTOM NAV ─────────────────────────────────────────────────────────── */
+.bottom-nav{position:fixed;bottom:0;left:50%;transform:translateX(-50%);width:100%;max-width:480px;background:var(--surface);border-top:1px solid var(--border);display:flex;z-index:500;padding-bottom:var(--safe-bottom);}
+.nav-item{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:10px 4px 8px;cursor:pointer;gap:3px;border:none;background:none;color:var(--muted);font-family:'Syne',sans-serif;transition:color 0.2s;}
+.nav-item.active{color:var(--accent);}
+.nav-icon{font-size:20px;line-height:1;}
+.nav-label{font-size:10px;font-weight:600;letter-spacing:0.5px;}
+
+/* ── SCREENS ────────────────────────────────────────────────────────────── */
+.screen{display:none;padding-bottom:calc(var(--nav-h) + 24px + var(--safe-bottom));}
+.screen.active{display:block;}
+
+/* ── HEADER ─────────────────────────────────────────────────────────────── */
+.header{background:var(--surface);border-bottom:1px solid var(--border);padding:calc(14px + var(--safe-top)) 20px 14px;position:sticky;top:0;z-index:100;}
+.header-top{display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;}
+.app-title{font-size:11px;letter-spacing:3px;text-transform:uppercase;color:var(--muted);font-family:'DM Mono',monospace;}
+.month-badge{font-size:11px;font-family:'DM Mono',monospace;color:var(--accent);background:rgba(240,192,64,0.1);border:1px solid rgba(240,192,64,0.2);padding:3px 10px;border-radius:20px;}
+.header-amounts{display:flex;align-items:baseline;gap:12px;flex-wrap:wrap;}
+.total-display{font-size:32px;font-weight:800;letter-spacing:-1px;line-height:1.15;}
+.total-display span{color:var(--accent);}
+.outstanding-badge{display:flex;flex-direction:column;}
+.outstanding-label{font-size:9px;color:var(--accent2);letter-spacing:1px;text-transform:uppercase;font-family:'DM Mono',monospace;line-height:1;}
+.outstanding-val{font-size:18px;font-weight:700;color:var(--accent2);font-family:'DM Mono',monospace;line-height:1.2;}
+.total-sub{font-size:12px;color:var(--muted);margin-top:4px;font-family:'DM Mono',monospace;}
+
+/* ── MONTH NAV ──────────────────────────────────────────────────────────── */
+.month-nav{display:flex;align-items:center;gap:12px;padding:10px 20px;background:var(--surface);border-bottom:1px solid var(--border);}
+.month-nav-btn{background:var(--card);border:1px solid var(--border);color:var(--text);width:32px;height:32px;border-radius:8px;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0;}
+.month-name{font-size:14px;font-weight:700;flex:1;text-align:center;}
+
+/* ── FILTER TABS ────────────────────────────────────────────────────────── */
+.tabs{display:flex;gap:8px;padding:12px 20px;background:var(--surface);border-bottom:1px solid var(--border);overflow-x:auto;scrollbar-width:none;}
+.tabs::-webkit-scrollbar{display:none;}
+.tab{padding:6px 14px;border-radius:20px;font-size:12px;font-weight:600;cursor:pointer;white-space:nowrap;border:1px solid var(--border);background:transparent;color:var(--muted);font-family:'Syne',sans-serif;transition:all 0.2s;}
+.tab.active{background:var(--accent);color:#000;border-color:var(--accent);}
+
+/* ── PILLS ──────────────────────────────────────────────────────────────── */
+.pills{display:flex;gap:10px;padding:14px 20px 0;overflow-x:auto;scrollbar-width:none;}
+.pills::-webkit-scrollbar{display:none;}
+.pill{flex-shrink:0;background:var(--card);border:1px solid var(--border);border-radius:14px;padding:10px 16px;min-width:110px;}
+.pill-label{font-size:10px;color:var(--muted);letter-spacing:1px;text-transform:uppercase;font-family:'DM Mono',monospace;}
+.pill-value{font-size:17px;font-weight:700;margin-top:3px;}
+.pill-value.inv{color:var(--accent4);} .pill-value.fixed{color:var(--accent3);} .pill-value.spend{color:var(--accent2);}
+
+/* ── SECTION ────────────────────────────────────────────────────────────── */
+.section{padding:16px 20px 0;}
+.section-title{font-size:10px;letter-spacing:2px;text-transform:uppercase;color:var(--muted);font-family:'DM Mono',monospace;margin-bottom:10px;display:flex;align-items:center;gap:8px;}
+.section-title::after{content:'';flex:1;height:1px;background:var(--border);}
+
+/* ── EXPENSE ITEM ───────────────────────────────────────────────────────── */
+.expense-item{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:12px 14px;margin-bottom:8px;display:flex;align-items:center;gap:10px;position:relative;overflow:hidden;transition:opacity 0.2s;}
+.expense-item.done{opacity:0.45;}
+.expense-item.done .expense-name{text-decoration:line-through;color:var(--muted);}
+.expense-item::before{content:'';position:absolute;left:0;top:0;bottom:0;width:3px;border-radius:0 2px 2px 0;}
+.cat-investment::before{background:var(--accent4);} .cat-fixed::before{background:var(--accent3);} .cat-spend::before{background:var(--accent2);} .cat-cc::before{background:var(--accent);}
+
+/* CHECKBOX */
+.check-wrap{flex-shrink:0;width:24px;height:24px;cursor:pointer;}
+.check-box{width:22px;height:22px;border-radius:7px;border:2px solid var(--border);background:transparent;display:flex;align-items:center;justify-content:center;transition:all 0.18s;font-size:13px;}
+.check-box.checked{background:var(--accent4);border-color:var(--accent4);color:#000;}
+
+.expense-icon{width:36px;height:36px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0;}
+.cat-investment .expense-icon{background:rgba(90,224,160,0.1);} .cat-fixed .expense-icon{background:rgba(90,174,224,0.1);} .cat-spend .expense-icon{background:rgba(224,90,90,0.1);} .cat-cc .expense-icon{background:rgba(240,192,64,0.1);}
+.expense-info{flex:1;min-width:0;}
+.expense-name{font-size:14px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;transition:all 0.2s;}
+.expense-sub{font-size:11px;color:var(--muted);margin-top:2px;font-family:'DM Mono',monospace;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.expense-amount{font-size:15px;font-weight:700;font-family:'DM Mono',monospace;flex-shrink:0;}
+.cat-investment .expense-amount{color:var(--accent4);} .cat-fixed .expense-amount{color:var(--accent3);} .cat-spend .expense-amount{color:var(--accent2);} .cat-cc .expense-amount{color:var(--accent);}
+.item-actions{display:flex;flex-direction:column;gap:4px;flex-shrink:0;}
+.action-btn{background:none;border:none;cursor:pointer;padding:3px 6px;border-radius:6px;font-size:14px;line-height:1;}
+.edit-btn{color:var(--accent3);} .delete-btn{color:var(--muted);}
+
+/* ── CC BREAKDOWN ───────────────────────────────────────────────────────── */
+.cc-breakdown{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:10px 14px;margin-top:2px;margin-bottom:8px;}
+.cc-breakdown-title{font-size:10px;color:var(--muted);letter-spacing:1.5px;text-transform:uppercase;font-family:'DM Mono',monospace;margin-bottom:8px;}
+.cc-row{display:flex;justify-content:space-between;align-items:center;padding:5px 0;border-bottom:1px solid var(--border);}
+.cc-row:last-child{border-bottom:none;}
+.cc-bank{font-size:12px;font-weight:600;display:flex;align-items:center;gap:8px;}
+.cc-dot{width:6px;height:6px;border-radius:50%;background:var(--accent);}
+.cc-amount{font-size:12px;font-family:'DM Mono',monospace;color:var(--accent);}
+.cc-flag{font-size:9px;background:rgba(224,90,90,0.2);color:var(--accent2);padding:2px 5px;border-radius:4px;margin-left:4px;}
+
+/* ── MINI BAR CHART (expenses) ──────────────────────────────────────────── */
+.chart-section{padding:16px 20px 0;}
+.bar-chart{display:flex;flex-direction:column;gap:8px;}
+.bar-row{display:flex;align-items:center;gap:10px;}
+.bar-label{font-size:11px;color:var(--muted);width:62px;flex-shrink:0;font-family:'DM Mono',monospace;text-align:right;}
+.bar-track{flex:1;height:26px;background:var(--card);border-radius:6px;overflow:hidden;}
+.bar-fill{height:100%;border-radius:6px;display:flex;align-items:center;padding-left:8px;font-size:11px;font-family:'DM Mono',monospace;font-weight:500;color:#000;min-width:40px;}
+
+/* ── FAB ────────────────────────────────────────────────────────────────── */
+.fab{position:fixed;bottom:calc(var(--nav-h) + 16px + var(--safe-bottom));right:20px;width:52px;height:52px;border-radius:16px;background:var(--accent);border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:24px;color:#000;box-shadow:0 8px 24px rgba(240,192,64,0.35);font-weight:800;z-index:200;transition:transform 0.15s;}
+.fab:active{transform:scale(0.9);}
+
+/* ── MODAL ──────────────────────────────────────────────────────────────── */
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.8);z-index:600;display:none;align-items:flex-end;backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);}
+.modal-overlay.open{display:flex;}
+.modal{background:var(--surface);border-radius:24px 24px 0 0;padding:20px 20px calc(24px + var(--safe-bottom));width:100%;border-top:1px solid var(--border);animation:slideUp 0.28s cubic-bezier(0.4,0,0.2,1);}
+@keyframes slideUp{from{transform:translateY(100%)}to{transform:translateY(0)}}
+.modal-handle{width:36px;height:4px;background:var(--border);border-radius:2px;margin:0 auto 18px;}
+.modal-title{font-size:18px;font-weight:700;margin-bottom:18px;display:flex;justify-content:space-between;align-items:center;}
+.modal-close-btn{background:var(--card);border:1px solid var(--border);color:var(--muted);width:30px;height:30px;border-radius:8px;cursor:pointer;font-size:14px;display:flex;align-items:center;justify-content:center;}
+.form-group{margin-bottom:12px;}
+.form-label{font-size:10px;color:var(--muted);letter-spacing:1px;text-transform:uppercase;font-family:'DM Mono',monospace;margin-bottom:5px;display:block;}
+.form-input{width:100%;background:var(--card);border:1px solid var(--border);border-radius:12px;padding:11px 14px;color:var(--text);font-size:15px;font-family:'Syne',sans-serif;font-weight:500;outline:none;transition:border-color 0.2s;-webkit-appearance:none;appearance:none;}
+.form-input:focus{border-color:var(--accent);}
+select.form-input{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' fill='%237a7a8a' viewBox='0 0 16 16'%3E%3Cpath d='M7.247 11.14 2.451 5.658C1.885 5.013 2.345 4 3.204 4h9.592a1 1 0 0 1 .753 1.659l-4.796 5.48a1 1 0 0 1-1.506 0z'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 14px center;padding-right:36px;}
+.form-row{display:flex;gap:10px;}
+.form-row .form-group{flex:1;}
+.btn-primary{width:100%;padding:14px;background:var(--accent);border:none;border-radius:14px;color:#000;font-size:15px;font-weight:700;font-family:'Syne',sans-serif;cursor:pointer;margin-top:4px;}
+.btn-primary:active{opacity:0.8;}
+
+/* Apply to future toggle */
+.future-toggle-row{display:flex;align-items:center;justify-content:space-between;background:var(--card);border:1px solid var(--border);border-radius:12px;padding:10px 14px;margin-bottom:12px;}
+.future-toggle-label{font-size:13px;font-weight:600;line-height:1.3;}
+.future-toggle-sub{font-size:10px;color:var(--muted);font-family:'DM Mono',monospace;margin-top:2px;}
+.toggle-switch{position:relative;width:42px;height:24px;flex-shrink:0;}
+.toggle-switch input{opacity:0;width:0;height:0;}
+.toggle-slider{position:absolute;cursor:pointer;inset:0;background:var(--border);border-radius:12px;transition:0.2s;}
+.toggle-slider:before{content:'';position:absolute;height:18px;width:18px;left:3px;bottom:3px;background:var(--muted);border-radius:50%;transition:0.2s;}
+.toggle-switch input:checked + .toggle-slider{background:var(--accent);}
+.toggle-switch input:checked + .toggle-slider:before{transform:translateX(18px);background:#000;}
+
+/* ── YEARLY SCREEN ──────────────────────────────────────────────────────── */
+.page-header{background:var(--surface);border-bottom:1px solid var(--border);padding:calc(14px + var(--safe-top)) 20px 14px;position:sticky;top:0;z-index:100;}
+.year-nav{display:flex;align-items:center;gap:12px;}
+.year-title-lbl{font-size:11px;letter-spacing:3px;text-transform:uppercase;color:var(--muted);font-family:'DM Mono',monospace;margin-bottom:4px;}
+.year-title{font-size:28px;font-weight:800;flex:1;letter-spacing:-1px;}
+.year-total-row{display:flex;gap:10px;padding:14px 20px 0;overflow-x:auto;scrollbar-width:none;}
+.year-total-row::-webkit-scrollbar{display:none;}
+.year-pill{flex-shrink:0;background:var(--card);border:1px solid var(--border);border-radius:14px;padding:10px 14px;text-align:center;min-width:96px;}
+.year-pill-label{font-size:10px;color:var(--muted);letter-spacing:1px;text-transform:uppercase;font-family:'DM Mono',monospace;}
+.year-pill-value{font-size:15px;font-weight:700;margin-top:3px;}
+.month-bars{padding:14px 20px 0;}
+.mbar-row{display:flex;align-items:center;gap:10px;margin-bottom:7px;}
+.mbar-label{font-size:11px;color:var(--muted);width:28px;flex-shrink:0;font-family:'DM Mono',monospace;text-align:right;}
+.mbar-track{flex:1;height:26px;background:var(--card);border-radius:6px;overflow:hidden;position:relative;}
+.mbar-fill{height:100%;border-radius:6px;display:flex;align-items:center;padding-left:8px;font-size:11px;font-family:'DM Mono',monospace;font-weight:500;color:#000;min-width:30px;}
+.mbar-empty{font-size:11px;color:var(--muted);padding-left:10px;line-height:26px;font-family:'DM Mono',monospace;}
+.cat-year-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;padding:14px 20px 0;}
+.cat-year-card{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:14px;}
+.cat-year-icon{font-size:20px;margin-bottom:6px;}
+.cat-year-name{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;font-family:'DM Mono',monospace;}
+.cat-year-val{font-size:17px;font-weight:700;margin-top:4px;}
+.cat-year-val.cc{color:var(--accent);} .cat-year-val.spend{color:var(--accent2);} .cat-year-val.fixed{color:var(--accent3);} .cat-year-val.investment{color:var(--accent4);}
+
+/* ── INVEST SCREEN ──────────────────────────────────────────────────────── */
+.invest-sub-text{font-size:12px;color:var(--muted);margin-top:3px;font-family:'DM Mono',monospace;}
+.horizon-picker{display:flex;gap:10px;padding:16px 20px 0;}
+.horizon-btn{flex:1;padding:12px 6px;border-radius:12px;border:1px solid var(--border);background:var(--card);color:var(--muted);font-size:14px;font-weight:700;font-family:'Syne',sans-serif;cursor:pointer;text-align:center;transition:all 0.2s;}
+.horizon-btn.active{background:var(--accent4);color:#000;border-color:var(--accent4);}
+.horizon-btn .sub{font-size:10px;font-weight:400;margin-top:2px;font-family:'DM Mono',monospace;}
+.result-card{margin:16px 20px 0;background:linear-gradient(135deg,rgba(90,224,160,0.08),rgba(90,224,160,0.03));border:1px solid rgba(90,224,160,0.2);border-radius:20px;padding:20px;text-align:center;}
+.result-label{font-size:11px;color:var(--muted);letter-spacing:2px;text-transform:uppercase;font-family:'DM Mono',monospace;margin-bottom:8px;}
+.result-amount{font-size:36px;font-weight:800;color:var(--accent4);letter-spacing:-1px;line-height:1.1;}
+.result-crore{font-size:15px;color:var(--muted);margin-top:4px;font-family:'DM Mono',monospace;}
+.result-meta{font-size:12px;color:var(--muted);margin-top:14px;font-family:'DM Mono',monospace;line-height:1.9;border-top:1px solid rgba(90,224,160,0.15);padding-top:14px;text-align:left;}
+.result-meta span{color:var(--text);font-weight:600;}
+.result-meta .green{color:var(--accent4);}
+.result-meta .yellow{color:var(--accent);}
+.growth-chart{padding:16px 20px 0;}
+.gchart-wrap{display:flex;align-items:flex-end;gap:6px;height:110px;}
+.gchart-col{flex:1;display:flex;flex-direction:column;align-items:center;gap:4px;height:100%;}
+.gchart-bar-area{flex:1;width:100%;display:flex;align-items:flex-end;}
+.gchart-bar{width:100%;border-radius:6px 6px 0 0;}
+.gchart-lbl{font-size:9px;color:var(--muted);font-family:'DM Mono',monospace;text-align:center;}
+.gchart-val{font-size:9px;font-family:'DM Mono',monospace;text-align:center;color:var(--accent4);}
+.sip-breakdown{padding:14px 20px 0;}
+.sip-item{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:12px 14px;margin-bottom:8px;display:flex;justify-content:space-between;align-items:center;}
+.sip-name{font-size:13px;font-weight:600;}
+.sip-detail{font-size:11px;color:var(--muted);font-family:'DM Mono',monospace;margin-top:2px;}
+.sip-corpus{font-size:15px;font-weight:700;font-family:'DM Mono',monospace;color:var(--accent4);text-align:right;}
+.sip-pct{font-size:11px;color:var(--muted);font-family:'DM Mono',monospace;text-align:right;margin-top:2px;}
+.note-box{margin:14px 20px 0;background:rgba(90,224,160,0.04);border:1px solid rgba(90,224,160,0.12);border-radius:12px;padding:12px 14px;font-size:12px;color:var(--muted);font-family:'DM Mono',monospace;line-height:1.7;}
+.note-box strong{color:var(--accent4);}
+.invest-header-detail{font-size:12px;color:var(--muted);margin-top:3px;font-family:'DM Mono',monospace;}
+
+.empty-state{text-align:center;padding:50px 20px;color:var(--muted);}
+.empty-state .icon{font-size:40px;margin-bottom:12px;}
+.empty-state p{font-size:13px;line-height:1.7;}
+.spacer{height:20px;}
+.toast{position:fixed;bottom:calc(var(--nav-h) + 16px + var(--safe-bottom));left:50%;transform:translateX(-50%) translateY(16px);background:var(--card);border:1px solid var(--border);color:var(--text);padding:9px 20px;border-radius:20px;font-size:13px;font-family:'DM Mono',monospace;opacity:0;transition:all 0.25s;z-index:700;white-space:nowrap;pointer-events:none;}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
+</style>
+
+</head>
+<body>
+
+<!-- ════════════════════════ SCREEN 1 — EXPENSES ════════════════════════ -->
+
+<div class="screen active" id="screen-expenses">
+  <div class="header">
+    <div class="header-top">
+      <div class="app-title">Expense Tracker</div>
+      <div class="month-badge" id="curBadge">APR 2026</div>
+    </div>
+    <div class="header-amounts">
+      <div class="total-display">₹<span id="totalAmt">0</span></div>
+      <div class="outstanding-badge">
+        <div class="outstanding-label">Outstanding</div>
+        <div class="outstanding-val" id="outstandingAmt">₹0</div>
+      </div>
+    </div>
+    <div class="total-sub" id="totalSub">Loading...</div>
+  </div>
+  <div class="month-nav">
+    <button class="month-nav-btn" onclick="changeMonth(-1)">‹</button>
+    <div class="month-name" id="monthName">April 2026</div>
+    <button class="month-nav-btn" onclick="changeMonth(1)">›</button>
+  </div>
+  <div class="tabs">
+    <button class="tab active" onclick="switchTab('all',this)">All</button>
+    <button class="tab" onclick="switchTab('investment',this)">📈 Invest</button>
+    <button class="tab" onclick="switchTab('fixed',this)">🏠 Fixed</button>
+    <button class="tab" onclick="switchTab('spend',this)">💸 Spend</button>
+    <button class="tab" onclick="switchTab('cc',this)">💳 Cards</button>
+  </div>
+  <div class="pills">
+    <div class="pill"><div class="pill-label">Investments</div><div class="pill-value inv" id="pillInv">₹0</div></div>
+    <div class="pill"><div class="pill-label">Fixed</div><div class="pill-value fixed" id="pillFixed">₹0</div></div>
+    <div class="pill"><div class="pill-label">Spending</div><div class="pill-value spend" id="pillSpend">₹0</div></div>
+  </div>
+  <div id="mainContent"></div>
+</div>
+
+<!-- ════════════════════════ SCREEN 2 — YEARLY ══════════════════════════ -->
+
+<div class="screen" id="screen-yearly">
+  <div class="page-header">
+    <div class="year-title-lbl">Annual Summary</div>
+    <div class="year-nav">
+      <div class="year-title" id="yearTitle">2026</div>
+      <button class="month-nav-btn" onclick="changeYear(-1)">‹</button>
+      <button class="month-nav-btn" onclick="changeYear(1)">›</button>
+    </div>
+  </div>
+  <div id="yearlyContent"></div>
+</div>
+
+<!-- ════════════════════════ SCREEN 3 — GROW ════════════════════════════ -->
+
+<div class="screen" id="screen-invest">
+  <div class="page-header">
+    <div class="year-title-lbl">SIP Growth Calculator</div>
+    <div style="font-size:28px;font-weight:800;letter-spacing:-1px;color:var(--accent4)" id="investHeaderTotal">₹30,000<span style="font-size:14px;color:var(--muted);font-weight:400">/mo</span></div>
+    <div class="invest-header-detail" id="investHeaderDetail">EMI/MF ₹18k · Devit MF ₹10k · Gold ₹2k · 12% p.a.</div>
+  </div>
+  <div id="investContent"></div>
+</div>
+
+<!-- ════════════════════════ BOTTOM NAV ═════════════════════════════════ -->
+
+<nav class="bottom-nav">
+  <button class="nav-item active" onclick="switchScreen('expenses',this)">
+    <span class="nav-icon">💰</span><span class="nav-label">Expenses</span>
+  </button>
+  <button class="nav-item" onclick="switchScreen('yearly',this)">
+    <span class="nav-icon">📅</span><span class="nav-label">Yearly</span>
+  </button>
+  <button class="nav-item" onclick="switchScreen('invest',this)">
+    <span class="nav-icon">📈</span><span class="nav-label">Grow</span>
+  </button>
+</nav>
+
+<button class="fab" id="fabBtn" onclick="openModal(null)">+</button>
+
+<!-- ════════════════════════ MODAL ══════════════════════════════════════ -->
+
+<div class="modal-overlay" id="modalOverlay" onclick="outsideClose(event)">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <div class="modal-title">
+      <span id="modalTitleText">Add Expense</span>
+      <button class="modal-close-btn" onclick="closeModal()">✕</button>
+    </div>
+    <input type="hidden" id="editId">
+    <div class="form-group">
+      <label class="form-label">Name</label>
+      <input class="form-input" id="inputName" type="text" placeholder="e.g. Home Loan">
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label class="form-label">Amount (₹)</label>
+        <input class="form-input" id="inputAmount" type="number" placeholder="25000" inputmode="numeric">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Category</label>
+        <select class="form-input" id="inputCategory">
+          <option value="investment">📈 Investment</option>
+          <option value="fixed">🏠 Fixed</option>
+          <option value="spend">💸 Spending</option>
+          <option value="cc">💳 Card</option>
+        </select>
+      </div>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Note (optional)</label>
+      <input class="form-input" id="inputNote" type="text" placeholder="e.g. Monthly EMI">
+    </div>
+
+    <!-- TWEAK 2 & 3: Apply to future months toggle — only shown when editing -->
+    <div class="future-toggle-row" id="futureToggleRow" style="display:none;">
+      <div>
+        <div class="future-toggle-label">Apply to future months</div>
+        <div class="future-toggle-sub">Updates template + all unedited future months</div>
+      </div>
+      <label class="toggle-switch">
+        <input type="checkbox" id="applyFuture" checked>
+        <span class="toggle-slider"></span>
+      </label>
+    </div>
+
+    <button class="btn-primary" id="saveBtn" onclick="saveExpense()">Save Expense</button>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ══════════════════ CONSTANTS ══════════════════════════════════════════════
+const MONTHS=['January','February','March','April','May','June','July','August','September','October','November','December'];
+const MSHORT=['JAN','FEB','MAR','APR','MAY','JUN','JUL','AUG','SEP','OCT','NOV','DEC'];
+const ICONS={investment:'📈',fixed:'🏠',spend:'💸',cc:'💳'};
+const CTITLES={cc:'Credit Cards',spend:'Spending',fixed:'Fixed Costs',investment:'Investments'};
+
+// ══════════════════ FIXED TEMPLATE ════════════════════════════════════════
+// TWEAK 1: "Debit MF" corrected to "Devit MF" (Devit = son's name)
+// This is the base template. We store user-modified overrides in localStorage key "fixed_template_overrides"
+// Each override is: { templateName: string, fields: { name?, amount?, category?, note? } }
+
+const FIXED_TEMPLATE_BASE = [
+  {name:'CC',               amount:10000, category:'cc',         note:'Credit Card'},
+  {name:'Petrol',           amount:4000,  category:'spend',      note:'Monthly fuel'},
+  {name:'EMI / MF',         amount:18000, category:'investment', note:'Mutual Fund EMI'},
+  {name:'Gold',             amount:2000,  category:'investment', note:'Gold savings'},
+  {name:'Devit MF',         amount:10000, category:'investment', note:'Devit Mutual Fund'},   // TWEAK 1 fix
+  {name:'LIC',              amount:5500,  category:'fixed',      note:'Life Insurance'},
+  {name:'NPS',              amount:4200,  category:'investment', note:'National Pension Scheme'},
+  {name:'Health Ins.',      amount:3500,  category:'fixed',      note:'Health Insurance'},
+  {name:'Home Loan',        amount:10000, category:'fixed',      note:'Monthly EMI'},
+  {name:'Papa',             amount:10000, category:'spend',      note:''},
+  {name:'Household',        amount:10000, category:'spend',      note:''},
+  {name:'Save - Travel',    amount:20000, category:'investment', note:'Travel savings'},
+  {name:'Save - Emergency', amount:10000, category:'investment', note:'Emergency fund'},
+  {name:'VC',               amount:10000, category:'spend',      note:''},
+  {name:'Rupee Card',       amount:10000, category:'cc',         note:''},
+];
+
+// APRIL 2026 default — historical, shown as-is
+const APR_2026=[
+  {id:1, name:'Credit Cards',    amount:57200, category:'cc',         note:'Airtel+Amazon+SBI+Axis+Others',
+   breakdown:[{bank:'Airtel',amt:4000},{bank:'Amazon',amt:4800},{bank:'SBI',amt:2600,flag:'**'},{bank:'Axis',amt:43500},{bank:'Other 1',amt:500},{bank:'Other 2',amt:1700}]},
+  {id:2, name:'Petrol',          amount:8000,  category:'spend',      note:'Monthly fuel'},
+  {id:3, name:'EMI / MF',        amount:18000, category:'investment', note:'Mutual Fund EMI'},
+  {id:4, name:'G',               amount:2000,  category:'spend',      note:''},
+  {id:5, name:'D MF',            amount:10000, category:'investment', note:'Direct Mutual Fund'},
+  {id:6, name:'LIC Premium 1',   amount:5500,  category:'fixed',      note:'Life Insurance'},
+  {id:7, name:'LIC Premium 2',   amount:10500, category:'fixed',      note:'Life Insurance'},
+  {id:8, name:'NPS',             amount:4200,  category:'investment', note:'National Pension Scheme'},
+  {id:9, name:'Health Insurance',amount:3500,  category:'fixed',      note:''},
+  {id:10,name:'Home Loan',       amount:25000, category:'fixed',      note:'Monthly EMI'},
+  {id:11,name:'Home',            amount:3000,  category:'fixed',      note:''},
+  {id:12,name:'VC',              amount:10000, category:'spend',      note:''},
+  {id:13,name:'R Card',          amount:42000, category:'cc',         note:''},
+  {id:14,name:'Pri',             amount:45000, category:'spend',      note:''},
+];
+
+// ══════════════════ STATE ══════════════════════════════════════════════════
+let curM=new Date().getMonth(), curY=new Date().getFullYear();
+let activeTab='all', activeYearView=new Date().getFullYear(), activeHorizon=10;
+
+// ══════════════════ TEMPLATE OVERRIDE STORAGE ══════════════════════════════
+// TWEAK 2 & 3: We store per-name overrides in a single key "tpl_overrides"
+// Structure: { [templateName]: { name?, amount?, category?, note? } }
+
+function getTemplateOverrides() {
+  try {
+    const s = localStorage.getItem('tpl_overrides');
+    return s ? JSON.parse(s) : {};
+  } catch(e) { return {}; }
+}
+
+function saveTemplateOverrides(overrides) {
+  try { localStorage.setItem('tpl_overrides', JSON.stringify(overrides)); } catch(e) {}
+}
+
+// Apply overrides on top of base template to get the effective template
+function getEffectiveTemplate() {
+  const overrides = getTemplateOverrides();
+  return FIXED_TEMPLATE_BASE.map(item => {
+    const ov = overrides[item.name];
+    return ov ? { ...item, ...ov } : { ...item };
+  });
+}
+
+// Update an override for a given template item (by original name)
+// TWEAK 2: change category → propagates to all future template months
+// TWEAK 3: change amount of investment → reflected in SIP calculator
+function applyTemplateOverride(originalName, fields) {
+  const overrides = getTemplateOverrides();
+  overrides[originalName] = { ...(overrides[originalName] || {}), ...fields };
+  saveTemplateOverrides(overrides);
+  // Also clear all future stored months so they regenerate from updated template
+  clearFutureMonthsForTemplateItem();
+}
+
+// Clear stored future months so they re-derive from template on next access
+function clearFutureMonthsForTemplateItem() {
+  const now = new Date();
+  // Clear from May 2026 onwards (template start), up to 10 years ahead
+  for (let y = 2026; y <= 2036; y++) {
+    for (let m = 0; m < 12; m++) {
+      if (new Date(y, m) < new Date(2026, 4)) continue; // before May 2026
+      if (new Date(y, m) >= new Date(2036, 4)) continue; // after template end
+      // Only clear if this month has NOT been explicitly edited by user
+      // We track which months have user edits with key "user_edited_months"
+      const editedMonths = getUserEditedMonths();
+      if (!editedMonths.has(`${y}_${m}`)) {
+        localStorage.removeItem(`exp_${y}_${m}`);
+      }
+    }
+  }
+}
+
+// Track which months the user has explicitly saved individual changes to
+function getUserEditedMonths() {
+  try {
+    const s = localStorage.getItem('user_edited_months');
+    return s ? new Set(JSON.parse(s)) : new Set();
+  } catch(e) { return new Set(); }
+}
+
+function markMonthAsEdited(y, m) {
+  const set = getUserEditedMonths();
+  set.add(`${y}_${m}`);
+  try { localStorage.setItem('user_edited_months', JSON.stringify([...set])); } catch(e) {}
+}
+
+// ══════════════════ STORAGE ════════════════════════════════════════════════
+function key(y,m){return `exp_${y}_${m}`;}
+function checkKey(y,m){return `chk_${y}_${m}`;}
+
+function isFixed(y,m){
+  return new Date(y,m)>=new Date(2026,4) && new Date(y,m)<new Date(2036,4);
+}
+
+function getData(y,m){
+  y=y===undefined?curY:y; m=m===undefined?curM:m;
+  try{const s=localStorage.getItem(key(y,m));if(s)return JSON.parse(s);}catch(e){}
+  if(y===2026&&m===3) return JSON.parse(JSON.stringify(APR_2026));
+  // TWEAK 2 & 3: Use effective template (with any overrides applied)
+  if(isFixed(y,m)) return getEffectiveTemplate().map((e,i)=>({...e,id:(y*1000+m*100+i+1)}));
+  return [];
+}
+
+function saveData(d,y,m){y=y??curY;m=m??curM;try{localStorage.setItem(key(y,m),JSON.stringify(d));}catch(e){}}
+
+// Checked state
+function getChecked(y,m){
+  y=y??curY;m=m??curM;
+  try{const s=localStorage.getItem(checkKey(y,m));if(s)return new Set(JSON.parse(s));}catch(e){}
+  return new Set();
+}
+function saveChecked(set,y,m){
+  y=y??curY;m=m??curM;
+  try{localStorage.setItem(checkKey(y,m),JSON.stringify([...set]));}catch(e){}
+}
+
+// ══════════════════ UTILS ══════════════════════════════════════════════════
+function fmt(n){return Number(n).toLocaleString('en-IN');}
+function fmtCr(n){
+  if(n>=10000000) return (n/10000000).toFixed(2)+' Cr';
+  if(n>=100000)   return (n/100000).toFixed(2)+' L';
+  return '₹'+fmt(Math.round(n));
+}
+function esc(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+function toast(msg){
+  const t=document.getElementById('toast');
+  t.textContent=msg;t.classList.add('show');
+  setTimeout(()=>t.classList.remove('show'),2200);
+}
+
+// ══════════════════ SCREEN SWITCHING ══════════════════════════════════════
+function switchScreen(name,el){
+  document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
+  document.getElementById('screen-'+name).classList.add('active');
+  el.classList.add('active');
+  document.getElementById('fabBtn').style.display=(name==='expenses')?'flex':'none';
+  if(name==='yearly') renderYearly();
+  if(name==='invest')  renderInvest();
+}
+
+// ══════════════════ SCREEN 1 — EXPENSES ══════════════════════════════════
+function switchTab(tab,el){
+  activeTab=tab;
+  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+  el.classList.add('active');
+  renderExpenses();
+}
+function changeMonth(d){
+  curM+=d;if(curM<0){curM=11;curY--;}if(curM>11){curM=0;curY++;}
+  renderExpenses();
+}
+
+function toggleCheck(id){
+  const chk=getChecked();
+  if(chk.has(id)) chk.delete(id); else chk.add(id);
+  saveChecked(chk);
+  renderExpenses();
+}
+
+function renderExpenses(){
+  const data=getData();
+  const chk=getChecked();
+  const filtered=activeTab==='all'?data:data.filter(e=>e.category===activeTab);
+
+  const total=data.reduce((s,e)=>s+e.amount,0);
+  const outstanding=data.filter(e=>!chk.has(e.id)).reduce((s,e)=>s+e.amount,0);
+  const inv=data.filter(e=>e.category==='investment').reduce((s,e)=>s+e.amount,0);
+  const fixed=data.filter(e=>e.category==='fixed').reduce((s,e)=>s+e.amount,0);
+  const spend=data.filter(e=>['spend','cc'].includes(e.category)).reduce((s,e)=>s+e.amount,0);
+  const paidCount=chk.size;
+  const totalCount=data.length;
+
+  document.getElementById('totalAmt').textContent=fmt(total);
+  document.getElementById('outstandingAmt').textContent='₹'+fmt(outstanding);
+  document.getElementById('curBadge').textContent=MSHORT[curM]+' '+curY;
+  document.getElementById('monthName').textContent=MONTHS[curM]+' '+curY;
+  document.getElementById('totalSub').textContent=`${totalCount} expenses · ${paidCount} paid · ${totalCount-paidCount} pending`;
+  document.getElementById('pillInv').textContent='₹'+fmt(inv);
+  document.getElementById('pillFixed').textContent='₹'+fmt(fixed);
+  document.getElementById('pillSpend').textContent='₹'+fmt(spend);
+
+  const el=document.getElementById('mainContent');
+  if(!filtered.length){
+    el.innerHTML=`<div class="empty-state"><div class="icon">📭</div><p>No expenses for this month.<br>Tap <strong>+</strong> to add one.</p></div>`;
+    return;
+  }
+
+  const groups={};
+  filtered.forEach(e=>{if(!groups[e.category])groups[e.category]=[];groups[e.category].push(e);});
+
+  let html='';
+
+  // Breakdown bar chart
+  if(activeTab==='all'){
+    const bars=[
+      {label:'Cards',   val:data.filter(e=>e.category==='cc').reduce((s,e)=>s+e.amount,0),         col:'#f0c040'},
+      {label:'Spending',val:data.filter(e=>e.category==='spend').reduce((s,e)=>s+e.amount,0),      col:'#e05a5a'},
+      {label:'Fixed',   val:data.filter(e=>e.category==='fixed').reduce((s,e)=>s+e.amount,0),      col:'#5aaee0'},
+      {label:'Invest',  val:data.filter(e=>e.category==='investment').reduce((s,e)=>s+e.amount,0), col:'#5ae0a0'},
+    ];
+    const mx=Math.max(...bars.map(b=>b.val),1);
+    html+=`<div class="chart-section"><div class="section-title">Breakdown</div><div class="bar-chart">`;
+    bars.forEach(b=>{
+      const p=Math.round(b.val/mx*100);
+      html+=`<div class="bar-row"><div class="bar-label">${b.label}</div><div class="bar-track"><div class="bar-fill" style="width:${p}%;background:${b.col}">₹${fmt(b.val)}</div></div></div>`;
+    });
+    html+=`</div></div>`;
+  }
+
+  ['cc','spend','fixed','investment'].forEach(cat=>{
+    if(!groups[cat]) return;
+    html+=`<div class="section"><div class="section-title">${CTITLES[cat]}</div>`;
+    groups[cat].forEach(e=>{
+      const isDone=chk.has(e.id);
+      html+=`
+        <div class="expense-item cat-${e.category}${isDone?' done':''}">
+          <div class="check-wrap" onclick="toggleCheck(${e.id})">
+            <div class="check-box${isDone?' checked':''}">${isDone?'✓':''}</div>
+          </div>
+          <div class="expense-icon">${ICONS[e.category]}</div>
+          <div class="expense-info">
+            <div class="expense-name">${esc(e.name)}</div>
+            ${e.note?`<div class="expense-sub">${esc(e.note)}</div>`:''}
+          </div>
+          <div class="expense-amount">₹${fmt(e.amount)}</div>
+          <div class="item-actions">
+            <button class="action-btn edit-btn" onclick="openModal(${e.id})">✎</button>
+            <button class="action-btn delete-btn" onclick="del(${e.id})">✕</button>
+          </div>
+        </div>`;
+      if(e.breakdown&&e.breakdown.length){
+        html+=`<div class="cc-breakdown"><div class="cc-breakdown-title">Card Breakdown</div>`;
+        e.breakdown.forEach(b=>{html+=`<div class="cc-row"><div class="cc-bank"><span class="cc-dot"></span>${esc(b.bank)}${b.flag?`<span class="cc-flag">${b.flag}</span>`:''}</div><div class="cc-amount">₹${fmt(b.amt)}</div></div>`;});
+        html+=`</div>`;
+      }
+    });
+    html+=`</div>`;
+  });
+
+  el.innerHTML=html;
+}
+
+// ══════════════════ SCREEN 2 — YEARLY ════════════════════════════════════
+function changeYear(d){
+  activeYearView+=d;
+  renderYearly();
+}
+
+function renderYearly(){
+  const Y=activeYearView;
+  document.getElementById('yearTitle').textContent=Y;
+  let annTotal=0,annInv=0,annFixed=0,annCC=0,annSpend=0;
+  const monthTotals=[];
+
+  for(let m=0;m<12;m++){
+    const d=getData(Y,m);
+    const mt=d.reduce((s,e)=>s+e.amount,0);
+    monthTotals.push(mt);
+    annTotal+=mt;
+    annInv  +=d.filter(e=>e.category==='investment').reduce((s,e)=>s+e.amount,0);
+    annFixed+=d.filter(e=>e.category==='fixed').reduce((s,e)=>s+e.amount,0);
+    annCC   +=d.filter(e=>e.category==='cc').reduce((s,e)=>s+e.amount,0);
+    annSpend+=d.filter(e=>e.category==='spend').reduce((s,e)=>s+e.amount,0);
+  }
+
+  const maxM=Math.max(...monthTotals,1);
+  const now=new Date();
+
+  let html=`
+    <div class="year-total-row">
+      <div class="year-pill"><div class="year-pill-label">Total</div><div class="year-pill-value" style="color:var(--accent)">₹${fmt(annTotal)}</div></div>
+      <div class="year-pill"><div class="year-pill-label">Invest</div><div class="year-pill-value" style="color:var(--accent4)">₹${fmt(annInv)}</div></div>
+      <div class="year-pill"><div class="year-pill-label">Fixed</div><div class="year-pill-value" style="color:var(--accent3)">₹${fmt(annFixed)}</div></div>
+      <div class="year-pill"><div class="year-pill-label">Spend</div><div class="year-pill-value" style="color:var(--accent2)">₹${fmt(annSpend+annCC)}</div></div>
+    </div>`;
+
+  html+=`<div class="section" style="padding-top:18px"><div class="section-title">Month by Month</div></div><div class="month-bars">`;
+  monthTotals.forEach((v,m)=>{
+    const future=(Y>now.getFullYear())||(Y===now.getFullYear()&&m>now.getMonth());
+    const pct=Math.round(v/maxM*100);
+    const col=future?'rgba(90,224,160,0.35)':'#5ae0a0';
+    html+=`<div class="mbar-row">
+      <div class="mbar-label">${MSHORT[m].slice(0,3)}</div>
+      <div class="mbar-track">
+        ${v>0
+          ?`<div class="mbar-fill" style="width:${pct}%;background:${col}">₹${fmt(v)}</div>`
+          :`<span class="mbar-empty">${future?'template':'—'}</span>`}
+      </div>
+    </div>`;
+  });
+  html+=`</div>`;
+
+  html+=`<div class="section" style="padding-top:18px"><div class="section-title">By Category</div></div>
+    <div class="cat-year-grid">
+      <div class="cat-year-card"><div class="cat-year-icon">💳</div><div class="cat-year-name">Cards</div><div class="cat-year-val cc">₹${fmt(annCC)}</div></div>
+      <div class="cat-year-card"><div class="cat-year-icon">💸</div><div class="cat-year-name">Spending</div><div class="cat-year-val spend">₹${fmt(annSpend)}</div></div>
+      <div class="cat-year-card"><div class="cat-year-icon">🏠</div><div class="cat-year-name">Fixed</div><div class="cat-year-val fixed">₹${fmt(annFixed)}</div></div>
+      <div class="cat-year-card"><div class="cat-year-icon">📈</div><div class="cat-year-name">Investments</div><div class="cat-year-val investment">₹${fmt(annInv)}</div></div>
+    </div><div class="spacer"></div>`;
+
+  document.getElementById('yearlyContent').innerHTML=html;
+}
+
+// ══════════════════ SCREEN 3 — GROW ══════════════════════════════════════
+// TWEAK 3: SIP items are dynamically read from effective template (investment category only)
+// We pick the 3 items that are SIP-relevant: EMI/MF, Gold, Devit MF
+
+const SIP_NAMES = ['EMI / MF', 'Gold', 'Devit MF']; // canonical names in template
+
+function getSipItems() {
+  const tpl = getEffectiveTemplate();
+  return SIP_NAMES.map(name => {
+    const item = tpl.find(t => t.name === name);
+    return item ? { name: item.name, amount: item.amount } : { name, amount: 0 };
+  }).filter(s => s.amount > 0);
+}
+
+function getSipTotal() {
+  return getSipItems().reduce((s, i) => s + i.amount, 0);
+}
+
+function setHorizon(y){activeHorizon=y;renderInvest();}
+
+function sipFV(monthly,months){
+  const r=0.12/12;
+  return monthly*(((Math.pow(1+r,months)-1)/r)*(1+r));
+}
+
+function renderInvest(){
+  const SIP_ITEMS = getSipItems();
+  const SIP_TOTAL = getSipTotal();
+
+  // Update header dynamically
+  document.getElementById('investHeaderTotal').innerHTML =
+    `₹${fmt(SIP_TOTAL)}<span style="font-size:14px;color:var(--muted);font-weight:400">/mo</span>`;
+  document.getElementById('investHeaderDetail').textContent =
+    SIP_ITEMS.map(s => `${s.name} ₹${s.amount >= 1000 ? (s.amount/1000)+'k' : s.amount}`).join(' · ') + ' · 12% p.a.';
+
+  const horizons=[10,15,20];
+  let html=`<div class="horizon-picker">`;
+  horizons.forEach(h=>{
+    const fv=sipFV(SIP_TOTAL,h*12);
+    html+=`<button class="horizon-btn${h===activeHorizon?' active':''}" onclick="setHorizon(${h})">
+      <div>${h} Yrs</div>
+      <div class="sub">${fmtCr(fv)}</div>
+    </button>`;
+  });
+  html+=`</div>`;
+
+  const n=activeHorizon*12;
+  const fv=sipFV(SIP_TOTAL,n);
+  const invested=SIP_TOTAL*n;
+  const gains=fv-invested;
+  const mult=(fv/invested).toFixed(1);
+
+  html+=`<div class="result-card">
+    <div class="result-label">Corpus in ${activeHorizon} Years @ 12% p.a.</div>
+    <div class="result-amount">₹${fmt(Math.round(fv))}</div>
+    <div class="result-crore">${fmtCr(fv)}</div>
+    <div class="result-meta">
+      Monthly SIP &emsp;&emsp;&emsp;<span>₹${fmt(SIP_TOTAL)}</span><br>
+      Total Invested &emsp;&emsp;<span>₹${fmt(invested)}</span><br>
+      Wealth Gained &emsp;&emsp;<span class="green">₹${fmt(Math.round(gains))}</span><br>
+      Money Multiplied &nbsp;&nbsp;<span class="yellow">${mult}×</span>
+    </div>
+  </div>`;
+
+  // Growth milestones chart
+  const steps=Math.min(activeHorizon, 5);
+  const step=activeHorizon/steps;
+  const milestones=[];
+  for(let i=1;i<=steps;i++) milestones.push({y:Math.round(step*i), v:sipFV(SIP_TOTAL,Math.round(step*i)*12)});
+  const maxFV=milestones[milestones.length-1].v;
+
+  html+=`<div class="growth-chart"><div class="section-title">Growth Milestones</div><div class="gchart-wrap">`;
+  milestones.forEach((m,i)=>{
+    const hPct=Math.round(m.v/maxFV*100);
+    const alpha=0.35+(i/milestones.length)*0.65;
+    html+=`<div class="gchart-col">
+      <div class="gchart-bar-area"><div class="gchart-bar" style="height:${hPct}%;background:rgba(90,224,160,${alpha})"></div></div>
+      <div class="gchart-val">${fmtCr(m.v)}</div>
+      <div class="gchart-lbl">${m.y}y</div>
+    </div>`;
+  });
+  html+=`</div></div>`;
+
+  // SIP breakdown per item
+  html+=`<div class="sip-breakdown"><div class="section-title">SIP Breakdown</div>`;
+  SIP_ITEMS.forEach(s=>{
+    const sfv=sipFV(s.amount,n);
+    const pct=SIP_TOTAL>0?Math.round(s.amount/SIP_TOTAL*100):0;
+    html+=`<div class="sip-item">
+      <div>
+        <div class="sip-name">${s.name}</div>
+        <div class="sip-detail">₹${fmt(s.amount)}/mo · ${pct}% of SIP</div>
+      </div>
+      <div>
+        <div class="sip-corpus">${fmtCr(sfv)}</div>
+        <div class="sip-pct">in ${activeHorizon} yrs</div>
+      </div>
+    </div>`;
+  });
+  html+=`</div>`;
+
+  html+=`<div class="note-box">
+    <strong>Assumptions</strong><br>
+    · Monthly SIP: <strong>₹${fmt(SIP_TOTAL)}</strong> (${SIP_ITEMS.map(s=>s.name).join(' + ')})<br>
+    · Return: <strong>12% p.a.</strong> compounded monthly<br>
+    · LIC, NPS, Save-Travel &amp; Save-Emergency excluded<br>
+    · Constant SIP assumed — actual returns will vary<br>
+    · For illustration only, not financial advice
+  </div><div class="spacer"></div>`;
+
+  document.getElementById('investContent').innerHTML=html;
+}
+
+// ══════════════════ MODAL ════════════════════════════════════════════════
+// TWEAK 2 & 3: When editing, show "Apply to future months" toggle
+// We need to track which template item (if any) this expense maps to
+let _editingOriginalName = null; // the original template name, so we can patch overrides
+
+function openModal(id){
+  _editingOriginalName = null;
+  document.getElementById('editId').value='';
+  document.getElementById('inputName').value='';
+  document.getElementById('inputAmount').value='';
+  document.getElementById('inputNote').value='';
+  document.getElementById('inputCategory').value='spend';
+  document.getElementById('modalTitleText').textContent='Add Expense';
+  document.getElementById('saveBtn').textContent='Save Expense';
+  document.getElementById('futureToggleRow').style.display='none';
+  document.getElementById('applyFuture').checked=true;
+
+  if(id!==null){
+    const e=getData().find(x=>x.id===id);
+    if(e){
+      document.getElementById('editId').value=e.id;
+      document.getElementById('inputName').value=e.name;
+      document.getElementById('inputAmount').value=e.amount;
+      document.getElementById('inputNote').value=e.note||'';
+      document.getElementById('inputCategory').value=e.category;
+      document.getElementById('modalTitleText').textContent='Edit Expense';
+      document.getElementById('saveBtn').textContent='Update Expense';
+
+      // Show "apply to future" toggle only if viewing a template month (May 2026+)
+      if(isFixed(curY,curM)){
+        document.getElementById('futureToggleRow').style.display='flex';
+        // Try to match to a template item by name
+        const tpl = getEffectiveTemplate();
+        const match = tpl.find(t => t.name === e.name);
+        if(match) _editingOriginalName = match.name;
+      }
+    }
+  }
+  document.getElementById('modalOverlay').classList.add('open');
+  setTimeout(()=>document.getElementById('inputName').focus(),300);
+}
+function closeModal(){document.getElementById('modalOverlay').classList.remove('open');}
+function outsideClose(e){if(e.target===document.getElementById('modalOverlay'))closeModal();}
+
+function saveExpense(){
+  const name=document.getElementById('inputName').value.trim();
+  const amount=parseFloat(document.getElementById('inputAmount').value);
+  const category=document.getElementById('inputCategory').value;
+  const note=document.getElementById('inputNote').value.trim();
+  const eid=document.getElementById('editId').value;
+  const applyFuture=document.getElementById('applyFuture').checked;
+  const ni=document.getElementById('inputName'),ai=document.getElementById('inputAmount');
+  if(!name){ni.style.borderColor='#e05a5a';setTimeout(()=>ni.style.borderColor='',1200);return;}
+  if(isNaN(amount)||amount<=0){ai.style.borderColor='#e05a5a';setTimeout(()=>ai.style.borderColor='',1200);return;}
+
+  let data=getData();
+  if(eid){
+    data=data.map(e=>e.id==eid?{...e,name,amount,category,note}:e);
+
+    // TWEAK 2 & 3: If editing a template item and "apply to future" is on,
+    // update the template override so all future months reflect the change
+    if(applyFuture && _editingOriginalName && isFixed(curY,curM)){
+      applyTemplateOverride(_editingOriginalName, {name, amount, category, note});
+      toast('✅ Updated + applied to all future months!');
+    } else {
+      toast('✅ Updated!');
+    }
+  } else {
+    data.push({id:Date.now(),name,amount,category,note});
+    toast('✅ Added!');
+  }
+
+  saveData(data);
+  // Mark this specific month as user-edited so template clears won't wipe it
+  markMonthAsEdited(curY, curM);
+
+  closeModal();
+  renderExpenses();
+}
+
+function del(id){
+  if(!confirm('Delete this expense?'))return;
+  const chk=getChecked(); chk.delete(id); saveChecked(chk);
+  saveData(getData().filter(e=>e.id!==id));
+  markMonthAsEdited(curY, curM);
+  renderExpenses();
+  toast('🗑 Deleted');
+}
+
+document.addEventListener('keydown',e=>{
+  if(e.key==='Enter'&&document.getElementById('modalOverlay').classList.contains('open'))saveExpense();
+  if(e.key==='Escape')closeModal();
+});
+
+// ══════════════════ INIT ══════════════════════════════════════════════════
+renderExpenses();
+</script>
+
+</body>
+</html>
